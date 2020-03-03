@@ -166,7 +166,7 @@ class ClientImpl implements IClient
         $this->context = stream_context_create();
         $errno = 0;
         $errstr = '';
-        $this->socket = @stream_socket_client(
+        $this->socket = stream_socket_client(
             $cString,
             $errno,
             $errstr,
@@ -178,7 +178,7 @@ class ClientImpl implements IClient
             throw new ClientException('Error connecting to ami: ' . $errstr);
         }
         $msg = new LoginAction($this->user, $this->pass, $this->eventMask);
-        $asteriskId = @stream_get_line($this->socket, 1024, Message::EOL);
+        $asteriskId = stream_get_line($this->socket, 1024, Message::EOL);
         if (strstr($asteriskId, 'Asterisk') === false) {
             throw new ClientException(
                 "Unknown peer. Is this an ami?: $asteriskId"
@@ -190,7 +190,7 @@ class ClientImpl implements IClient
                 'Could not connect: ' . $response->getMessage()
             );
         }
-        @stream_set_blocking($this->socket, 0);
+        stream_set_blocking($this->socket, 0);
         $this->currentProcessingMessage = '';
         $this->logger->debug('Logged in successfully to ami.');
     }
@@ -237,8 +237,8 @@ class ClientImpl implements IClient
     {
         $msgs = array();
         // Read something.
-        $read = @fread($this->socket, 65535);
-        if ($read === false || @feof($this->socket)) {
+        $read = fread($this->socket, 65535);
+        if ($read === false || feof($this->socket)) {
             throw new ClientException('Error reading');
         }
         $this->currentProcessingMessage .= $read;
@@ -262,8 +262,10 @@ class ClientImpl implements IClient
      */
     public function process()
     {
+//        echo '+';
         $msgs = $this->getMessages();
         foreach ($msgs as $aMsg) {
+//            echo '.';
             $this->logger->debug(
                 '------ Received: ------ ' . "\n" . $aMsg . "\n\n"
             );
@@ -405,7 +407,7 @@ class ClientImpl implements IClient
             '------ Sending: ------ ' . "\n" . $messageToSend . '----------'
         );
         $this->lastActionId = $message->getActionId();
-        if (@fwrite($this->socket, $messageToSend) < $length) {
+        if (fwrite($this->socket, $messageToSend) < $length) {
             throw new ClientException('Could not send message');
         }
         $read = 0;
@@ -431,8 +433,9 @@ class ClientImpl implements IClient
      */
     public function close()
     {
+        $this->incomingQueue = array();
         $this->logger->debug('Closing connection to asterisk.');
-        @stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
+        stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
     }
 
     /**
